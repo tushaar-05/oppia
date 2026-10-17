@@ -122,3 +122,5 @@ Files to open first when exploring code paths:
 If anything above is unclear or you want the agent to include examples for
 editing/running a specific subsystem (backend handler, a frontend component, or
 an e2e test), tell me which area and I will expand or iterate.
+
+<!-- test PR description check simulation -->
