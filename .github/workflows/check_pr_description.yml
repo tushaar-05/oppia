@@ -20,10 +20,23 @@ jobs:
         with:
           script: |
             const pr = context.payload.pull_request;
-            const prDescription = pr.body;
+
+            // Artificial 5-minute delay to simulate CI queue delay as requested by maintainer
+            core.info("Simulating CI queue delay: sleeping for 5 minutes...");
+            await new Promise(resolve => setTimeout(resolve, 300000));
+            core.info("Waking up from simulated queue delay. Fetching live PR details...");
+
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            const prDescription = pullRequest.body;
 
             if (!prDescription) {
               core.setFailed("The PR description is missing or does not meet the required format.");
+              return;
             }
 
             const requiredSections = [
@@ -39,7 +52,12 @@ jobs:
 
             if (missingSections.length > 0) {
                 const username = pr.user.login;
-                const comment = `Hi @${username}, it looks like the description of this PR doesn't use our [template](https://github.com/oppia/oppia/blob/develop/.github/PULL_REQUEST_TEMPLATE.md), which is pre-populated when you open a new PR. Specifically, it's missing the following required sections:\n\n` + missingSections.map(s => `- ${s.replace(/^##\s*/, '')}`).join('\n') + `Please re-open this PR and fill in the template without deleting any required sections.`
+                const formattedSections = missingSections
+                    .map(s => `- ${s.replace(/^##\s*/, '')}`)
+                    .join('\n');
+
+                const comment = `Hi @${username}, it looks like the description of this PR doesn't use our [template](https://github.com/oppia/oppia/blob/develop/.github/PULL_REQUEST_TEMPLATE.md), which is pre-populated when you open a new PR. Specifically, it's missing the following required sections:\n\n${formattedSections}\n\nPlease re-open this PR and fill in the template without deleting any required sections.`;
+
                 await github.rest.issues.createComment({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -55,4 +73,6 @@ jobs:
                 });
 
                 core.setFailed("The PR description is missing required sections.");
+            } else {
+                core.info("All required description sections are present!");
             }
